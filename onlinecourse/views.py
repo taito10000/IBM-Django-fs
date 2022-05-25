@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment
+from .models import Course, Enrollment, Question, Choice, Submission, Lesson
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -62,11 +62,13 @@ def logout_request(request):
 
 def check_if_enrolled(user, course):
     is_enrolled = False
+
     if user.id is not None:
         # Check if user enrolled
         num_results = Enrollment.objects.filter(user=user, course=course).count()
         if num_results > 0:
             is_enrolled = True
+    
     return is_enrolled
 
 
@@ -92,7 +94,7 @@ class CourseDetailView(generic.DetailView):
 def enroll(request, course_id):
     course = get_object_or_404(Course, pk=course_id)
     user = request.user
-
+    
     is_enrolled = check_if_enrolled(user, course)
     if not is_enrolled and user.is_authenticated:
         # Create an enrollment
@@ -110,18 +112,34 @@ def enroll(request, course_id):
          # Collect the selected choices from exam form
          # Add each selected choice object to the submission object
          # Redirect to show_exam_result with the submission id
-#def submit(request, course_id):
+def submit(request, course_id):
+    usr = request.user
+    enrlmnt = Enrollment.objects.get(user=usr, course=course_id)
+    chs = extract_answers(request)
+    
+    sub = Submission.objects.create(enrollment=enrlmnt)
+    print("**** ** SUB ID *** *** ")
+    print(sub.id)
+    ch_objs = []
+    for ch in chs:
+        ch_objs.append(Choice.objects.get(id=ch))
+        sub.choices.add(Choice.objects.get(id=ch))
+        print(Choice.objects.get(id=ch).question)
 
+    # sub.choices.add(chs)
+    # sub.choices.add(ch_objs)
+    sub.save()
+    return HttpResponseRedirect(reverse(viewname='onlinecourse:show_exam_result', args=(course_id, sub.id)))
 
 # <HINT> A example method to collect the selected choices from the exam form from the request object
-#def extract_answers(request):
-#    submitted_anwsers = []
-#    for key in request.POST:
-#        if key.startswith('choice'):
-#            value = request.POST[key]
-#            choice_id = int(value)
-#            submitted_anwsers.append(choice_id)
-#    return submitted_anwsers
+def extract_answers(request):
+    submitted_anwsers = []
+    for key in request.POST:
+        if key.startswith('choice'):
+            value = request.POST[key]
+            choice_id = int(value)
+            submitted_anwsers.append(choice_id)
+    return submitted_anwsers
 
 
 # <HINT> Create an exam result view to check if learner passed exam and show their question results and result for each question,
@@ -130,7 +148,56 @@ def enroll(request, course_id):
         # Get the selected choice ids from the submission record
         # For each selected choice, check if it is a correct answer or not
         # Calculate the total score
-#def show_exam_result(request, course_id, submission_id):
+def show_exam_result(request, course_id, submission_id):
+    context = {}
+
+    crs = Course.objects.get(id=course_id)
+    sub = Submission.objects.get(id=submission_id)
+    chs = sub.choices.all()
+    
+    q_dict = {}
+    grades = {}
+    totalpoints = 0
+    points = 0
+
+    for ch in chs:
+        if ch.question.id in q_dict:
+            q_dict[ch.question.id].append(ch.id)
+        else:
+            q_dict[ch.question.id] = [ch.id]
+
+    
+    for key in q_dict:
+        q = Question.objects.get(id=key)
+        grades[key] = q.is_get_score(q_dict[key])
+        totalpoints += q.grade
+
+    
+    for key in grades:
+        if grades[key]:
+            points += Question.objects.get(id=key).grade
+    
 
 
+
+    print("** ** ** ** *")
+    print(points, totalpoints)
+    
+    
+    for ch in chs:
+        print(ch.is_correct)
+       
+    sels = []
+    for i in q_dict:
+        sels.append(q_dict[i][0])
+    
+    print(sels)
+    grade = 1
+    context['course'] = crs
+    context['selected_ids'] = sels
+    context['grade'] = (points/totalpoints)*100
+    print((points/totalpoints)*100)
+
+
+    return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
 
