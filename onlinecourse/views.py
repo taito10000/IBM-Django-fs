@@ -191,9 +191,9 @@ def show_exam_result(request, course_id, submission_id):
     
     grade = 1
     context['course'] = crs
-    context['selected_ids'] = q_dict.keys()
+    context['selected_ids'] = q_dict
     context['grade'] = (points/totalpoints)*100
-   
+    print((points/totalpoints)*100)
 
 
     return render(request, 'onlinecourse/exam_result_bootstrap.html', context)
