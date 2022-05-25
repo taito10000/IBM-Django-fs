@@ -187,11 +187,14 @@ def show_exam_result(request, course_id, submission_id):
     for ch in chs:
         print(ch.is_correct)
        
+    sels = []
+    for i in q_dict:
+        sels.append(q_dict[i][0])
     
-    
+    print(sels)
     grade = 1
     context['course'] = crs
-    context['selected_ids'] = q_dict
+    context['selected_ids'] = sels
     context['grade'] = (points/totalpoints)*100
     print((points/totalpoints)*100)
 
