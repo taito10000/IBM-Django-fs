@@ -1,7 +1,7 @@
 from django.shortcuts import render
 from django.http import HttpResponseRedirect
 # <HINT> Import any new Models here
-from .models import Course, Enrollment, Question, Choice, Submission
+from .models import Course, Enrollment, Question, Choice, Submission, Lesson
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404, render, redirect
 from django.urls import reverse
@@ -118,9 +118,17 @@ def submit(request, course_id):
     chs = extract_answers(request)
     
     sub = Submission.objects.create(enrollment=enrlmnt)
+    print("**** ** SUB ID *** *** ")
+    print(sub.id)
+    ch_objs = []
     for ch in chs:
-        sub.choices.set(ch)
+        ch_objs.append(Choice.objects.get(id=ch))
+        sub.choices.add(Choice.objects.get(id=ch))
+        print(Choice.objects.get(id=ch).question)
 
+    # sub.choices.add(chs)
+    # sub.choices.add(ch_objs)
+    sub.save()
     return HttpResponseRedirect(reverse(viewname='onlinecourse:show_exam_result', args=(course_id, sub.id)))
 
 # <HINT> A example method to collect the selected choices from the exam form from the request object
@@ -142,14 +150,49 @@ def extract_answers(request):
         # Calculate the total score
 def show_exam_result(request, course_id, submission_id):
     context = {}
+
     crs = Course.objects.get(id=course_id)
     sub = Submission.objects.get(id=submission_id)
+    chs = sub.choices.all()
+    
+    q_dict = {}
+    grades = {}
+    totalpoints = 0
+    points = 0
+
+    for ch in chs:
+        if ch.question.id in q_dict:
+            q_dict[ch.question.id].append(ch.id)
+        else:
+            q_dict[ch.question.id] = [ch.id]
+
+    
+    for key in q_dict:
+        q = Question.objects.get(id=key)
+        grades[key] = q.is_get_score(q_dict[key])
+        totalpoints += q.grade
+
+    
+    for key in grades:
+        if grades[key]:
+            points += Question.objects.get(id=key).grade
+    
+
+
+
+    print("** ** ** ** *")
+    print(points, totalpoints)
+    
+    
+    for ch in chs:
+        print(ch.is_correct)
+       
+    
     
     grade = 1
-    selected = [1,2,3]
     context['course'] = crs
-    context['selected_ids'] = sub.choices
-    context['grade'] = grade
+    context['selected_ids'] = q_dict.keys()
+    context['grade'] = (points/totalpoints)*100
    
 
 
