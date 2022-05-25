@@ -81,7 +81,7 @@
             {% else %}
             <div class="collapse">
             {% endif %}
-            <form id="questionform" action="point to a submit view" method="post">
+            <form id="questionform" action="./submit/" method="post">
                 {% for lesson in course.lesson_set.all %}
                     {% for question in lesson.question_set.all %}
                   
